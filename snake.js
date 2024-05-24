@@ -113,6 +113,39 @@ class Base_Scene extends Scene {
 }
 
 export class snake extends Base_Scene {
+
+    constructor(){
+        super();
+        this.shapes = {
+            apple1: new defs.Subdivision_Sphere(4),
+            apple2: new defs.Subdivision_Sphere(4),
+            apple3: new defs.Subdivision_Sphere(4),
+            apple4: new defs.Subdivision_Sphere(4),
+            apple5: new defs.Subdivision_Sphere(4),
+            cube: new defs.Cube,
+        }
+
+        this.materials = {
+            apple: new Material(new defs.Phong_Shader(),
+            {ambient: 1, diffusivity: .6, color: hex_color("#ffffff")}),
+            plastic: new Material(new defs.Phong_Shader(),
+                {ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#ffffff")}),
+        } 
+        
+        this.apples=[0,0,0,0,0,0,0,0,0,0];
+        this.counter=0;
+        this.matrices = [
+            Mat4.identity(), // Matrix for apple1
+            Mat4.identity(), // Matrix for apple2
+            Mat4.identity(), // Matrix for apple3
+            Mat4.identity(), // Matrix for apple4
+            Mat4.identity()  // Matrix for apple5
+        ];
+        this.index = [0,0,0,0,0];
+        this.lastAppleTime = 0;
+    }
+
+
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         this.key_triggered_button("Change Direction", ["c"], this.set_colors);
@@ -122,30 +155,8 @@ export class snake extends Base_Scene {
 
         const green=hex_color('#568b34');
         const green2=hex_color('#49752d');
-        // this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:green})); 
-        // model_transform=model_transform.times(Mat4.translation(2,0,0))
-        // this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:green2}));
+
         
-        // for (let i=0; i<4; i++){
-        //     let model_transform = Mat4.identity();
-        //     let model_transform2 = Mat4.identity();
-        //     for (let j=0; j<4; j++){
-        //         if (i%2==0){
-        //             if (i==0){
-        //                 this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:green}));
-        //                 console.log("happened")
-        //             }else{
-        //                 this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:green})); 
-        //                 this.shapes.cube.draw(context, program_state, model_transform2, this.materials.plastic.override({color:green}));
-        //             } 
-        //         }else{
-        //             this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:green2}));
-        //             this.shapes.cube.draw(context, program_state, model_transform2, this.materials.plastic.override({color:green2}));
-        //         }
-        //         model_transform=model_transform.times(Mat4.translation(2,0,0));
-        //         model_transform2=model_transform2.times(Mat4.translation(-2,0,0));
-        //     }
-        // }
 
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
@@ -158,15 +169,79 @@ export class snake extends Base_Scene {
                 }
             }
         }
+    }
+
+    drawapple(context, program_state, matrix, t){
+        let row=0;
+        let column=0;
+
         
+        while(this.find(this.apples, 0, row) && this.find(this.apples, 1, column)){
+            row=Math.floor(8*Math.random());
+            column=Math.floor(8*Math.random());
+        }
+        this.apples[this.counter*2]=row;
+        this.apples[this.counter*2+1]=column;
+        matrix = matrix.times(Mat4.translation(row * 2, column * 2, 2)).times(Mat4.scale(0.8,0.8,0.8));
+
+        let z = Math.floor(t);
 
 
+    
+        // console.log("Apple drawn")
+        console.log(row)
+        console.log(column)
+
+        return matrix;
+    }
+
+    find(array, rc, value){
+        for (let i=rc; i<array.length; i=i+2){
+            if(array[i]==value){
+                return true;
+            }
+        }
+        return false;
     }
 
 
     display(context, program_state) {
         super.display(context, program_state);
         this.drawboard(context, program_state);
+        let color = hex_color('#EE4B2B');
+
+
+        
+
+        const t = program_state.animation_time / 1000
+
+
+
+        if( this.counter<5 && (t - this.lastAppleTime > 5)){
+            let model_transform = this.drawapple(context, program_state, this.matrices[this.counter], t);
+            this.matrices[this.counter] = model_transform;
+            this.index[this.counter]=1;
+            this.counter++;
+            this.lastAppleTime = t;
+            console.log("Apple 1 drawn");
+       }
+
+
+        if (this.index[0]!=0){
+            this.shapes.apple1.draw(context, program_state, this.matrices[0], this.materials.plastic.override({color: color}));
+            // console.log("Apple 1 drawn");
+        }if(this.index[1]!=0){
+            this.shapes.apple2.draw(context, program_state, this.matrices[1], this.materials.plastic.override({color: color}));
+        }if(this.index[2]!=0){
+            this.shapes.apple3.draw(context, program_state, this.matrices[2], this.materials.plastic.override({color: color}));
+        }if(this.index[3]!=0){
+            this.shapes.apple4.draw(context, program_state, this.matrices[3], this.materials.plastic.override({color: color}));
+        }if(this.index[4]!=0){
+            this.shapes.apple5.draw(context, program_state, this.matrices[4], this.materials.plastic.override({color: color}));
+        }
+
+
+
     }
 
 }
