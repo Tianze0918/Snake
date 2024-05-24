@@ -122,6 +122,7 @@ export class snake extends Base_Scene {
             apple3: new defs.Subdivision_Sphere(4),
             apple4: new defs.Subdivision_Sphere(4),
             apple5: new defs.Subdivision_Sphere(4),
+            worm: new defs.Subdivision_Sphere(4),
             cube: new defs.Cube,
         }
 
@@ -129,9 +130,13 @@ export class snake extends Base_Scene {
             apple: new Material(new defs.Phong_Shader(),
             {ambient: 1, diffusivity: .6, color: hex_color("#ffffff")}),
             plastic: new Material(new defs.Phong_Shader(),
-                {ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#ffffff")}),
-        } 
-        
+                { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#ffffff") }),
+            worm: new Material(new defs.Phong_Shader(),
+                { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#8B4513") }),
+        }
+
+        this.worm_position = vec3(0, 0, 1);
+        this.direction = vec3(0, 0, 0);
         this.apples=[0,0,0,0,0,0,0,0,0,0];
         this.counter=0;
         this.matrices = [
@@ -149,6 +154,10 @@ export class snake extends Base_Scene {
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         this.key_triggered_button("Change Direction", ["c"], this.set_colors);
+        this.key_triggered_button("Up", ["i"], () => this.direction = vec3(0, 0.1, 0));
+        this.key_triggered_button("Down", ["k"], () => this.direction = vec3(0, -0.1, 0));
+        this.key_triggered_button("Left", ["j"], () => this.direction = vec3(-0.1, 0, 0));
+        this.key_triggered_button("Right", ["l"], () => this.direction = vec3(0.1, 0, 0));
     }
 
     drawboard(context, program_state){
@@ -210,10 +219,14 @@ export class snake extends Base_Scene {
         this.drawboard(context, program_state);
         let color = hex_color('#EE4B2B');
 
-
-        
-
         const t = program_state.animation_time / 1000
+
+        this.worm_position = this.worm_position.plus(this.direction.times(0.1));
+
+        // Draw worm
+        let worm_transform = Mat4.identity().times(Mat4.translation(this.worm_position[0] * 2, this.worm_position[1] * 2, this.worm_position[2]));
+        this.shapes.worm.draw(context, program_state, worm_transform, this.materials.worm);
+
 
 
 
