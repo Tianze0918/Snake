@@ -102,6 +102,11 @@ export class snake extends Base_Scene {
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/poison.jpeg", 'LINEAR_MIPMAP_LINEAR')
             }),
+            texture3: new Material(new Textured_Phong(), {
+                color: hex_color("#FFD700"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/You-Died.jpg", )
+            }),
         }
 
         // board variables
@@ -148,6 +153,7 @@ export class snake extends Base_Scene {
         this.key_triggered_button("Your personal record is " + this.pr, ["PR"] );
 
     }
+ 
 
     drawboard(context, program_state){
         const green=hex_color('#568b34');
@@ -225,6 +231,7 @@ export class snake extends Base_Scene {
                 // remove candy from list
                 this.candies.splice(i, 1);
                 this.counter -= 1;
+                this.pr++;
 
                 // TODO: maybe increase speed as the worm grows? would have to update worm_speed and worm_gap = 1.5/ worm_speed
             }
@@ -237,6 +244,7 @@ export class snake extends Base_Scene {
         let y = this.worm_position[1][3];
         if (x < -0.25 || x >= (this.board_width-1) * 2 || y < -0.25 || y >= (this.board_height -1) * 2) {
             this.game_over_flag = true;
+            this.pr=0;
         }
         
         // check if worm hits itself
@@ -246,6 +254,7 @@ export class snake extends Base_Scene {
                 console.log(this.worm_position);
                 console.log(matrix)
                 this.game_over_flag = true;
+                this.pr=0;
             }
         }
     }
@@ -280,6 +289,8 @@ export class snake extends Base_Scene {
         if (this.game_over_flag) {
             // TODO: somehow visualize game over state - maybe display leaderboard
             this.worm_direction = vec3(0, 0, 0);
+            let matrix=Mat4.identity().times(Mat4.translation(8,8,3)).times(Mat4.scale(8,4,1));
+            this.shapes.cube.draw(context, program_state, matrix,this.materials.texture3);
         } else {
             this.detect_end_collision();
         }
@@ -315,6 +326,7 @@ export class snake extends Base_Scene {
        }
 
        this.see_poison_time(t);
+       context.scratchpad.controls.set_pr(this.pr);
 
        //generate poison at a varying interval from every 5-10 seconds, each time generate fraom 3-5 poison
        if (t-this.last_poison_time>this.poison_time){
