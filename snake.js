@@ -1,8 +1,15 @@
 import {defs, tiny} from './common.js';
 
+// const {
+//     Vector, Vector3, vec, vec3, vec4, color, hex_color, Matrix, Mat4, Light, Shape, Material, Scene, Texture, Textured_Phong, Shader,
+// } = tiny;
+
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Matrix, Mat4, Light, Shape, Material, Scene,
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
+
+const {Axis_Arrows, Textured_Phong} = defs
+
 
 class Cube extends Shape {
     constructor() {
@@ -74,6 +81,9 @@ export class snake extends Base_Scene {
         }
 
         this.materials = {
+            // phong: new Material(new Textured_Phong(), {
+            //     color: hex_color("#ffffff"),
+            // }),
             apple: new Material(new defs.Phong_Shader(),
                 {ambient: 1, diffusivity: .6, color: hex_color("#ffffff")}),
             plastic: new Material(new defs.Phong_Shader(),
@@ -82,11 +92,22 @@ export class snake extends Base_Scene {
                 { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#8B4513") }),
             worm_hit: new Material(new defs.Phong_Shader(),
                 { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#00FFFF") }),
+            texture: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/candy_texture.jpeg", 'LINEAR_MIPMAP_LINEAR')
+            }),
+            texture2: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/poison.jpeg", 'LINEAR_MIPMAP_LINEAR')
+            }),
         }
 
         // board variables
         this.board_width = 10;
         this.board_height = 10;
+        this.pr=0;
 
         // worm variables
         this.worm_position = Mat4.identity().times(Mat4.translation(0,0,1.8))
@@ -102,6 +123,14 @@ export class snake extends Base_Scene {
         this.counter=0;
         this.last_candy_time = 0;
         this.candy_size = 0.8;
+        
+        //poison
+        this.poison = [];
+        this.pcount=0; 
+        this.poisont = []; //life expectancy
+        this.poisont2 = []; //birth time;
+        this.poison_time=0;
+        this.last_poison_time=0;
 
         // game state variables
         this.game_over_flag = false;
@@ -116,6 +145,8 @@ export class snake extends Base_Scene {
         this.key_triggered_button("Down", ["k"], () => this.worm_direction = vec3(0, -this.worm_speed, 0));
         this.key_triggered_button("Left", ["j"], () => this.worm_direction = vec3(-this.worm_speed, 0, 0));
         this.key_triggered_button("Right", ["l"], () => this.worm_direction = vec3(this.worm_speed, 0, 0));
+        this.key_triggered_button("Your personal record is " + this.pr, ["PR"] );
+
     }
 
     drawboard(context, program_state){
@@ -146,6 +177,35 @@ export class snake extends Base_Scene {
         // push onto candies array
         // TODO: adjust fx to take a param for which array to append matrix to (which candy type)
         this.candies.push(matrix);
+    }
+
+    generate_poison(){
+        let row = Math.floor(this.board_height*Math.random());
+        let column = Math.floor(this.board_width*Math.random());
+        let matrix = Mat4.identity().times(Mat4.translation(row * 2, column * 2, 1.8)).times(Mat4.scale(this.candy_size,this.candy_size,this.candy_size));
+
+        while (!this.candy_exist(matrix) && !this.poison_exist(matrix)){
+            let row = Math.floor(this.board_height*Math.random());
+            let column = Math.floor(this.board_width*Math.random());
+            matrix = Mat4.identity().times(Mat4.translation(row * 2, column * 2, 1.8)).times(Mat4.scale(this.candy_size,this.candy_size,this.candy_size));
+        }
+        this.poisont.push(Math.floor(Math.random() * (10 - 5 + 1)) + 3);
+        this.poison.push(matrix);
+    }
+
+    candy_exist(matrix){
+        for (let i=0; i<this.counter; i++){
+            if (matrix==this.candies[i])
+                return false;
+        }
+        return true;
+    }
+    poison_exist(matrix){
+        for (let i=0; i<this.counter; i++){
+            if (matrix==this.poison[i])
+                return false;
+        }
+        return true;
     }
 
     detect_sphere_collision(a, b, r) {
@@ -190,6 +250,17 @@ export class snake extends Base_Scene {
         }
     }
 
+    see_poison_time(t){
+        for (let i=0; i<this.pcount;i++){
+            if(t-this.poisont2[i]>this.poisont[i]){
+                this.poison.splice(i, 1);
+                this.poisont.splice(i, 1);
+                this.poisont2.splice(i, 1);
+                this.pcount -= 1;
+            }
+        }
+    }
+
     // helper math function
     clamp(x, min, max) {
         return x <= min ? min 
@@ -216,6 +287,8 @@ export class snake extends Base_Scene {
         // check if worm has hit candy and adjust state as required
         this.detect_candy_collision();
 
+        this.see_poison_time();
+
         // move worm head
         this.worm_position = this.worm_position.times(Mat4.translation(this.worm_direction[0], this.worm_direction[1], 0));
 
@@ -241,9 +314,25 @@ export class snake extends Base_Scene {
             this.last_candy_time = t;
        }
 
+       this.see_poison_time(t);
+
+       //generate poison at a varying interval from every 5-10 seconds, each time generate fraom 3-5 poison
+       if (t-this.last_poison_time>this.poison_time){
+            this.generate_poison();
+            console.log("poison generated");
+            this.pcount++;
+            this.poison_time= Math.floor(Math.random() * (10 - 5 + 1)) + 5;
+            this.last_poison_time=t;
+            this.poisont2.push(t);  
+       }
+
        // draw candies
        this.candies.map(((elem)=>
-            this.shapes.apple.draw(context, program_state, elem, this.materials.plastic.override({color: color}))
+            this.shapes.apple.draw(context, program_state, elem, this.materials.texture)
+        ));
+
+        this.poison.map(((elem)=>
+            this.shapes.apple.draw(context, program_state, elem, this.materials.texture2)
         ));
     }
 }
