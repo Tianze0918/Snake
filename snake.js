@@ -53,6 +53,7 @@ class Base_Scene extends Scene {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(Mat4.translation(-7, -7, -30));
+            // TODO: maybe add camera mode where cam follows worm to take advantage of 3d
         }
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
 
@@ -93,16 +94,16 @@ export class snake extends Base_Scene {
         this.worm_direction = vec3(0, 0, 0);
         this.worm_speed = 0.10;
         this.worm_gap = 1.5/this.worm_speed;
-        this.body_ct = 0;
+        this.body_ct = 0; // can be used to calculate the score!
 
         // candy variables
-        this.candies = []
+        this.candies = [] // candy is now a simple array containing all the matrices of existing candies
+        //TODO: add another array for a different candy type
         this.counter=0;
         this.last_candy_time = 0;
         this.candy_size = 0.8;
 
         // game state variables
-        this.collision_detected = false;
         this.game_over_flag = false;
         this.turned = false;
         this.turn_time = 0;
@@ -143,6 +144,7 @@ export class snake extends Base_Scene {
         let matrix = Mat4.identity().times(Mat4.translation(row * 2, column * 2, 1.8)).times(Mat4.scale(this.candy_size,this.candy_size,this.candy_size));
 
         // push onto candies array
+        // TODO: adjust fx to take a param for which array to append matrix to (which candy type)
         this.candies.push(matrix);
     }
 
@@ -153,13 +155,18 @@ export class snake extends Base_Scene {
     }
 
     detect_candy_collision() {
-        this.collision_detected = false;
+        // TODO: check for collision with other candy type (should be similar, but diff effects!)
+
         for(let i = 0; i < this.counter; i ++) {
             if(this.detect_sphere_collision(this.worm_position, this.candies[i], 1 + this.candy_size)) { // should adjust if we change the snake side!
-                this.candies.splice(i, 1);
-                this.collision_detected = true;
+                // update worm size
                 this.body_ct += 1;
+
+                // remove candy from list
+                this.candies.splice(i, 1);
                 this.counter -= 1;
+
+                // TODO: maybe increase speed as the worm grows? would have to update worm_speed and worm_gap = 1.5/ worm_speed
             }
         }
     }
@@ -172,7 +179,7 @@ export class snake extends Base_Scene {
             this.game_over_flag = true;
         }
         
-        // add check if worm hits itself - should be similar to candy collision 
+        // check if worm hits itself
         for(let i = 1; i < this.body_ct + 1; i ++) {
             let matrix = this.worm_history[this.clamp(i * this.worm_gap, 0 , this.worm_history.length - 1)]
             if(this.detect_sphere_collision(this.worm_position, matrix, 1)) {
@@ -183,6 +190,7 @@ export class snake extends Base_Scene {
         }
     }
 
+    // helper math function
     clamp(x, min, max) {
         return x <= min ? min 
             : x >= max ? max 
@@ -197,12 +205,12 @@ export class snake extends Base_Scene {
 
         const t = program_state.animation_time / 1000;
 
-        // check if worm is in game ending stat (hit wall/self)
-        if (!this.game_over_flag) {
-            this.detect_end_collision();
-        }
-        else {
+        // check if worm is in game ending state (hit wall/self)
+        if (this.game_over_flag) {
+            // TODO: somehow visualize game over state - maybe display leaderboard
             this.worm_direction = vec3(0, 0, 0);
+        } else {
+            this.detect_end_collision();
         }
 
         // check if worm has hit candy and adjust state as required
@@ -211,22 +219,22 @@ export class snake extends Base_Scene {
         // move worm head
         this.worm_position = this.worm_position.times(Mat4.translation(this.worm_direction[0], this.worm_direction[1], 0));
 
-        // update history (pop once too long)
+        // update history
         this.worm_history.unshift(this.worm_position)
         if (this.worm_history.length > this.worm_gap * (this.body_ct + 1)) {
             this.worm_history.pop();
         }
 
+        // draw worm head
+        this.shapes.worm.draw(context, program_state, this.worm_position, this.materials.worm);
 
-         // draw worm
-        this.shapes.worm.draw(context, program_state, this.worm_position, this.collision_detected ? this.materials.worm_hit : this.materials.worm);
-
+        // draw worm body (make appropriate number of spheres trailing behind)
         for(let i = 1; i < (this.body_ct + 1); i ++) {
             let matrix = this.worm_history[this.clamp(i * this.worm_gap, 0 , this.worm_history.length - 1)];
-            this.shapes.worm.draw(context, program_state, matrix, this.collision_detected ? this.materials.worm_hit : this.materials.worm);
+            this.shapes.worm.draw(context, program_state, matrix,this.materials.worm);
         }
 
-        // generate new candies as needed
+        // generate new candies as needed (if there are none remaining or sufficient time has passed)
         if( this.counter == 0 || this.counter < 5 && (t - this.last_candy_time > 5)){
             this.generate_candy();
             this.counter++;
