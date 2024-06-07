@@ -66,20 +66,18 @@ export class snake extends Base_Scene {
             plastic: new Material(new defs.Phong_Shader(),
                 { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#ffffff") }),
             worm: new Material(new defs.Phong_Shader(),
-                { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#8B4513") }),
-            worm_hit: new Material(new defs.Phong_Shader(),
-                { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#00FFFF") }),
-            texture: new Material(new Textured_Phong(), {
+                { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#f2a6f7") }),
+            candy: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/candy_texture.jpeg", 'LINEAR_MIPMAP_LINEAR')
             }),
-            texture2: new Material(new Textured_Phong(), {
+            poison: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/poison.jpeg", 'LINEAR_MIPMAP_LINEAR')
             }),
-            texture3: new Material(new Textured_Phong(), {
+            dead_ui: new Material(new Textured_Phong(), {
                 color: hex_color("#FFD700"),
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/You-Died.jpg", )
@@ -128,17 +126,17 @@ export class snake extends Base_Scene {
     }
 
     drawboard(context, program_state){
-        const green = hex_color('#568b34');
-        const green2 = hex_color('#49752d');
+        const blue = hex_color('#8bccf7');
+        const blue2 = hex_color('#4633b0');
 
         for (let i = 0; i < this.board_width; i++) {
             for (let j = 0; j < this.board_height; j++) {
                 let model_transform = Mat4.identity().times(Mat4.translation(i * 2, j * 2, 0));
                 let diff = i + j;
                 if (diff % 2 == 0) {
-                    this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: green}));
+                    this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: blue}));
                 } else {
-                    this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: green2}));
+                    this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: blue2}));
                 }
             }
         }
@@ -207,13 +205,16 @@ export class snake extends Base_Scene {
             this.game_over_flag = true;
             this.currentscore = 0;
         }
+
         for (let i = 1; i < this.body_ct + 1; i++) {
-            let matrix = this.worm_history[this.clamp(i * this.worm_gap, 0, this.worm_history.length - 1)]
-            if (this.detect_sphere_collision(this.worm_position, matrix, 1)) {
-                console.log(this.worm_position);
-                console.log(matrix)
-                this.game_over_flag = true;
-                this.currentscore = 0;
+            if(i * this.worm_gap < this.worm_history.length) {
+                let matrix = this.worm_history[i * this.worm_gap];
+                if (this.detect_sphere_collision(this.worm_position, matrix, 1)) {
+                    console.log(this.worm_position);
+                    console.log(matrix)
+                    this.game_over_flag = true;
+                    this.currentscore = 0;
+                }
             }
         }
     }
@@ -229,12 +230,6 @@ export class snake extends Base_Scene {
         }
     }
 
-    clamp(x, min, max) {
-        return x <= min ? min
-            : x >= max ? max
-            : x;
-    }
-
     display(context, program_state) {
         super.display(context, program_state);
         this.drawboard(context, program_state);
@@ -245,7 +240,7 @@ export class snake extends Base_Scene {
         if (this.game_over_flag) {
             this.worm_direction = vec3(0, 0, 0);
             let matrix = Mat4.identity().times(Mat4.translation(8, 8, 3)).times(Mat4.scale(8, 4, 1));
-            this.shapes.cube.draw(context, program_state, matrix, this.materials.texture3);
+            this.shapes.cube.draw(context, program_state, matrix, this.materials.dead_ui);
         } else {
             this.detect_end_collision();
         }
@@ -255,7 +250,11 @@ export class snake extends Base_Scene {
 
         this.worm_position = this.worm_position.times(Mat4.translation(this.worm_direction[0], this.worm_direction[1], 0));
 
-        this.worm_history.unshift(this.worm_position)
+        if(!this.worm_direction.equals(vec3(0, 0, 0))) {
+            console.log(this.worm_direction);
+            this.worm_history.unshift(this.worm_position);
+        }
+        console.log(this.worm_history);
         if (this.worm_history.length > this.worm_gap * (this.body_ct + 1)) {
             this.worm_history.pop();
         }
@@ -263,8 +262,10 @@ export class snake extends Base_Scene {
         this.shapes.worm.draw(context, program_state, this.worm_position, this.materials.worm);
 
         for (let i = 1; i < (this.body_ct + 1); i++) {
-            let matrix = this.worm_history[this.clamp(i * this.worm_gap, 0, this.worm_history.length - 1)];
-            this.shapes.worm.draw(context, program_state, matrix, this.materials.worm);
+            if(i * this.worm_gap < this.worm_history.length) {
+                let matrix = this.worm_history[i * this.worm_gap];
+                this.shapes.worm.draw(context, program_state, matrix, this.materials.worm);
+            }
         }
 
         if (this.counter == 0 || this.counter < 5 && (t - this.last_candy_time > 5)) {
@@ -285,11 +286,11 @@ export class snake extends Base_Scene {
         }
 
         this.candies.map(((elem) =>
-            this.shapes.apple.draw(context, program_state, elem, this.materials.texture)
+            this.shapes.apple.draw(context, program_state, elem, this.materials.candy)
         ));
 
         this.poison.map(((elem) =>
-            this.shapes.apple.draw(context, program_state, elem, this.materials.texture2)
+            this.shapes.apple.draw(context, program_state, elem, this.materials.poison)
         ));
     }
 }
