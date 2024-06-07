@@ -66,7 +66,7 @@ export class snake extends Base_Scene {
             plastic: new Material(new defs.Phong_Shader(),
                 { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#ffffff") }),
             worm: new Material(new defs.Phong_Shader(),
-                { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#f2a6f7") }),
+                { ambient: .5, diffusivity: .6, specularity: 0.3, color: hex_color("#ffc6c6") }),
             candy: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
@@ -78,7 +78,7 @@ export class snake extends Base_Scene {
                 texture: new Texture("assets/poison.jpeg", 'LINEAR_MIPMAP_LINEAR')
             }),
             dead_ui: new Material(new Textured_Phong(), {
-                color: hex_color("#FFD700"),
+                color: hex_color("#54188c"),
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/You-Died.jpg", )
             }),
@@ -126,8 +126,8 @@ export class snake extends Base_Scene {
     }
 
     drawboard(context, program_state){
-        const blue = hex_color('#8bccf7');
-        const blue2 = hex_color('#4633b0');
+        const blue = hex_color('#a6f5eb');
+        const blue2 = hex_color('#249184');
 
         for (let i = 0; i < this.board_width; i++) {
             for (let j = 0; j < this.board_height; j++) {
@@ -239,7 +239,7 @@ export class snake extends Base_Scene {
 
         if (this.game_over_flag) {
             this.worm_direction = vec3(0, 0, 0);
-            let matrix = Mat4.identity().times(Mat4.translation(8, 8, 3)).times(Mat4.scale(8, 4, 1));
+            let matrix = Mat4.identity().times(Mat4.translation(8.75, 9, 3)).times(Mat4.scale(8, 4, 1));
             this.shapes.cube.draw(context, program_state, matrix, this.materials.dead_ui);
         } else {
             this.detect_end_collision();
