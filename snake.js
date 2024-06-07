@@ -45,10 +45,12 @@ class Base_Scene extends Scene {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             program_state.set_camera(Mat4.translation(-7, -7, -30));
         }
-        program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
-        const light_position = vec4(0, 5, 5, 1);
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+            program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
+            const light_position = vec4(0, 5, 5, 1);
+            program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+
     }
+
 }
 
 export class snake extends Base_Scene {
@@ -59,6 +61,7 @@ export class snake extends Base_Scene {
             worm: new defs.Subdivision_Sphere(4),
             cube: new defs.Cube,
         }
+
 
         this.materials = {
             apple: new Material(new defs.Phong_Shader(),
@@ -88,6 +91,7 @@ export class snake extends Base_Scene {
         this.highscore = 0;
         this.board_width = 10;
         this.board_height = 10;
+        this.challenge=false;
         this.reset_game();
     }
 
@@ -112,6 +116,7 @@ export class snake extends Base_Scene {
         this.game_over_flag = false;
         this.turned = false;
         this.turn_time = 0;
+        this.challenge=false;
     }
 
     make_control_panel() {
@@ -125,6 +130,7 @@ export class snake extends Base_Scene {
         this.live_string(box => box.textContent = "High Score: " + this.highscore);
         this.new_line();
         this.key_triggered_button("Reset Game", ["n"], () => this.reset_game());
+        this.key_triggered_button("Challenge Mode", ["c"], () => this.set_challenge());
     }
 
     drawboard(context, program_state){
@@ -160,7 +166,11 @@ export class snake extends Base_Scene {
             column = Math.floor(this.board_width * Math.random());
             matrix = Mat4.identity().times(Mat4.translation(row * 2, column * 2, 1.8)).times(Mat4.scale(this.candy_size, this.candy_size, this.candy_size));
         }
-        this.poisont.push(Math.floor(Math.random() * (10 - 5 + 1)) + 3);
+        if (!this.challenge){
+            this.poisont.push(Math.floor(Math.random() * (10 - 5 + 1)) + 5);
+        }else{
+            this.poisont.push(Math.floor(Math.random() * (16 - 8 + 1)) + 8);
+        }
         this.poison.push(matrix);
     }
 
@@ -200,6 +210,19 @@ export class snake extends Base_Scene {
         }
     }
 
+    set_challenge(){
+        this.challenge=true;
+    }
+
+    detect_poison_collision() {
+        for (let i = 0; i < this.pcount; i++) {
+            if (this.detect_sphere_collision(this.worm_position, this.poison[i], 1 + this.candy_size)) {
+                this.game_over_flag=true;
+                console.log("hit poison")
+            }
+        }
+    }
+
     detect_end_collision() {
         let x = this.worm_position[0][3];
         let y = this.worm_position[1][3];
@@ -229,6 +252,22 @@ export class snake extends Base_Scene {
         }
     }
 
+    hidden_candy(){
+        for (let i = 0; i < this.counter; i++) {
+            if (this.within2(this.worm_position, this.candies[i])) {
+
+            }
+        }
+    }
+
+    within2(a, b){
+        let diff = a.map((item, index) => item[3] - b[index][3]);
+        let dist = Math.sqrt(diff.reduce((accumulator, currentValue) => accumulator + currentValue ** 2, 0));
+        return dist < 3;
+    }
+
+
+
     clamp(x, min, max) {
         return x <= min ? min
             : x >= max ? max
@@ -238,9 +277,10 @@ export class snake extends Base_Scene {
     display(context, program_state) {
         super.display(context, program_state);
         this.drawboard(context, program_state);
-        let color = hex_color('#EE4B2B');
+        //let color = hex_color('#EE4B2B');
 
         const t = program_state.animation_time / 1000;
+  
 
         if (this.game_over_flag) {
             this.worm_direction = vec3(0, 0, 0);
@@ -252,6 +292,8 @@ export class snake extends Base_Scene {
 
         this.detect_candy_collision();
         this.see_poison_time();
+        this.detect_poison_collision();
+        
 
         this.worm_position = this.worm_position.times(Mat4.translation(this.worm_direction[0], this.worm_direction[1], 0));
 
@@ -273,15 +315,19 @@ export class snake extends Base_Scene {
             this.last_candy_time = t;
         }
 
-        this.see_poison_time(t);
 
         if (t - this.last_poison_time > this.poison_time) {
+
             this.generate_poison();
-            console.log("poison generated");
             this.pcount++;
-            this.poison_time = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
+            if (!this.challenge){
+                this.poison_time = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
+            }else{
+                this.poison_time = Math.floor(Math.random() * (2 - 1 + 1)) + 1;
+            }
             this.last_poison_time = t;
             this.poisont2.push(t);
+    
         }
 
         this.candies.map(((elem) =>
